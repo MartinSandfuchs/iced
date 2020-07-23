@@ -6,6 +6,7 @@ use crate::{
     Background, Font, HorizontalAlignment, Point, Primitive, Rectangle, Size,
     Vector, VerticalAlignment, Viewport,
 };
+use iced_native::video;
 
 /// A group of primitives that should be clipped together.
 #[derive(Debug, Clone)]
@@ -34,6 +35,11 @@ pub struct Layer<'a> {
     ///
     /// [`Layer`]: struct.Layer.html
     pub images: Vec<Image>,
+
+    /// The samples of the [`Layer`].
+    ///
+    /// [`Layer`]: struct.Layer.html
+    pub samples: Vec<Sample>,
 }
 
 impl<'a> Layer<'a> {
@@ -47,6 +53,7 @@ impl<'a> Layer<'a> {
             meshes: Vec::new(),
             text: Vec::new(),
             images: Vec::new(),
+            samples: Vec::new(),
         }
     }
 
@@ -224,6 +231,12 @@ impl<'a> Layer<'a> {
                     bounds: *bounds + translation,
                 });
             }
+            Primitive::Sample { sample, bounds } => {
+                layers.last_mut().unwrap().samples.push(Sample {
+                    sample: sample.clone(),
+                    bounds: *bounds + translation,
+                });
+            }
             Primitive::Svg { handle, bounds } => {
                 let layer = layers.last_mut().unwrap();
 
@@ -350,6 +363,16 @@ pub enum Image {
         /// The bounds of the image.
         bounds: Rectangle,
     },
+}
+
+/// A video sample.
+#[derive(Debug, Clone)]
+pub struct Sample {
+    /// The sample itself
+    pub sample: video::Sample,
+
+    /// The bounds of the sample
+    pub bounds: Rectangle,
 }
 
 #[allow(unsafe_code)]

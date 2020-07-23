@@ -42,6 +42,8 @@ mod platform {
         pub use crate::runtime::svg::{Handle, Svg};
     }
 
+    pub use crate::runtime::video::{self, Video};
+
     #[doc(no_inline)]
     pub use {
         button::Button, checkbox::Checkbox, container::Container, image::Image,

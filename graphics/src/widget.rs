@@ -19,6 +19,7 @@ pub mod scrollable;
 pub mod slider;
 pub mod svg;
 pub mod text_input;
+pub mod video;
 
 mod column;
 mod row;

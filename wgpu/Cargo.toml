@@ -25,6 +25,8 @@ guillotiere = "0.5"
 # Pin `gfx-memory` until https://github.com/gfx-rs/wgpu-rs/issues/261 is
 # resolved
 gfx-memory = "=0.1.1"
+gstreamer = "0.16.1"
+futures = "0.3.4"
 
 [dependencies.iced_native]
 version = "0.2"

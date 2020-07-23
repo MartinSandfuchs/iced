@@ -25,6 +25,8 @@ pub struct Backend {
     #[cfg(any(feature = "image", feature = "svg"))]
     image_pipeline: image::Pipeline,
 
+    sample_pipeline: crate::sample::Pipeline,
+
     default_text_size: u16,
 }
 
@@ -52,6 +54,8 @@ impl Backend {
 
             #[cfg(any(feature = "image", feature = "svg"))]
             image_pipeline,
+
+            sample_pipeline: crate::sample::Pipeline::new(device),
 
             default_text_size: settings.default_text_size,
         }
@@ -155,6 +159,14 @@ impl Backend {
                     scale_factor,
                 );
             }
+        }
+
+        if !layer.samples.is_empty() {
+            let scaled = transformation
+                * Transformation::scale(scale_factor, scale_factor);
+
+            self.sample_pipeline
+                .draw(device, encoder, &layer.samples, scaled, bounds, target);
         }
 
         if !layer.text.is_empty() {

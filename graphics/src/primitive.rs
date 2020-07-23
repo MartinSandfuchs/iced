@@ -1,6 +1,6 @@
 use iced_native::{
-    image, svg, Background, Color, Font, HorizontalAlignment, Rectangle, Size,
-    Vector, VerticalAlignment,
+    image, video, svg, Background, Color, Font, HorizontalAlignment,
+    Rectangle, Size, Vector, VerticalAlignment,
 };
 
 use crate::triangle;
@@ -51,6 +51,14 @@ pub enum Primitive {
         /// The handle of the image
         handle: image::Handle,
         /// The bounds of the image
+        bounds: Rectangle,
+    },
+    /// A video sample
+    Sample {
+        /// The sample
+        sample: video::Sample,
+
+        /// The bounds of the sample
         bounds: Rectangle,
     },
     /// An SVG primitive

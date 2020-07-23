@@ -36,6 +36,7 @@ pub mod space;
 pub mod svg;
 pub mod text;
 pub mod text_input;
+pub mod video;
 
 #[doc(no_inline)]
 pub use button::Button;
@@ -69,6 +70,8 @@ pub use svg::Svg;
 pub use text::Text;
 #[doc(no_inline)]
 pub use text_input::TextInput;
+#[doc(no_inline)]
+pub use video::Video;
 
 use crate::{layout, overlay, Clipboard, Event, Hasher, Layout, Length, Point};
 

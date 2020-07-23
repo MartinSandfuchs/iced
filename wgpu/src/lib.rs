@@ -50,6 +50,8 @@ pub(crate) use iced_graphics::Transformation;
 #[cfg(any(feature = "image", feature = "svg"))]
 mod image;
 
+mod sample;
+
 /// A [`wgpu`] graphics renderer for [`iced`].
 ///
 /// [`wgpu`]: https://github.com/gfx-rs/wgpu-rs
