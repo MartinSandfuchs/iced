@@ -2,6 +2,7 @@ use iced::{
     button, slider, video, window, Align, Button, Column, Command, Container,
     Length, Settings, Slider, Subscription, Video,
 };
+use std::path::PathBuf;
 
 #[derive(Clone, Debug)]
 enum Message {
@@ -27,11 +28,11 @@ struct Application {
 impl iced::Application for Application {
     type Executor = iced::executor::Default;
     type Message = Message;
-    type Flags = ();
+    type Flags = String;
 
     fn new(directory: Self::Flags) -> (Self, Command<Self::Message>) {
         let mut player = video::Player::new().unwrap();
-        player.set_source("/home/martinsandfuchs/Downloads/sample_video.mp4");
+        player.set_source(&directory);
         player.play();
         (
             Self {
@@ -115,12 +116,20 @@ impl iced::Application for Application {
 }
 
 fn main() {
+    let env: Vec<_> = std::env::args().collect();
+    let path = match env.get(1) {
+        Some(path) => path,
+        None => {
+            println!("No path provided");
+            return;
+        }
+    };
     <Application as iced::Application>::run(Settings {
         window: window::Settings {
             size: (1600, 1000),
             ..window::Settings::default()
         },
-        flags: (),
+        flags: path.clone(),
         ..Settings::default()
     })
 }
