@@ -12,28 +12,18 @@ use iced_native::video;
 #[derive(Debug, Clone)]
 pub struct Layer<'a> {
     /// The clipping bounds of the [`Layer`].
-    ///
-    /// [`Layer`]: struct.Layer.html
     pub bounds: Rectangle,
 
     /// The quads of the [`Layer`].
-    ///
-    /// [`Layer`]: struct.Layer.html
     pub quads: Vec<Quad>,
 
     /// The triangle meshes of the [`Layer`].
-    ///
-    /// [`Layer`]: struct.Layer.html
     pub meshes: Vec<Mesh<'a>>,
 
     /// The text of the [`Layer`].
-    ///
-    /// [`Layer`]: struct.Layer.html
     pub text: Vec<Text<'a>>,
 
     /// The images of the [`Layer`].
-    ///
-    /// [`Layer`]: struct.Layer.html
     pub images: Vec<Image>,
 
     /// The samples of the [`Layer`].
@@ -44,8 +34,6 @@ pub struct Layer<'a> {
 
 impl<'a> Layer<'a> {
     /// Creates a new [`Layer`] with the given clipping bounds.
-    ///
-    /// [`Layer`]: struct.Layer.html
     pub fn new(bounds: Rectangle) -> Self {
         Self {
             bounds,
@@ -60,8 +48,6 @@ impl<'a> Layer<'a> {
     /// Creates a new [`Layer`] for the provided overlay text.
     ///
     /// This can be useful for displaying debug information.
-    ///
-    /// [`Layer`]: struct.Layer.html
     pub fn overlay(lines: &'a [impl AsRef<str>], viewport: &Viewport) -> Self {
         let mut overlay =
             Layer::new(Rectangle::with_size(viewport.logical_size()));
@@ -94,8 +80,6 @@ impl<'a> Layer<'a> {
 
     /// Distributes the given [`Primitive`] and generates a list of layers based
     /// on its contents.
-    ///
-    /// [`Primitive`]: ../enum.Primitive.html
     pub fn generate(
         primitive: &'a Primitive,
         viewport: &Viewport,
@@ -163,8 +147,8 @@ impl<'a> Layer<'a> {
                     color: match background {
                         Background::Color(color) => color.into_linear(),
                     },
-                    border_radius: *border_radius as f32,
-                    border_width: *border_width as f32,
+                    border_radius: *border_radius,
+                    border_width: *border_width,
                     border_color: border_color.into_linear(),
                 });
             }
@@ -256,33 +240,21 @@ impl<'a> Layer<'a> {
 #[repr(C)]
 pub struct Quad {
     /// The position of the [`Quad`].
-    ///
-    /// [`Quad`]: struct.Quad.html
     pub position: [f32; 2],
 
     /// The size of the [`Quad`].
-    ///
-    /// [`Quad`]: struct.Quad.html
     pub size: [f32; 2],
 
     /// The color of the [`Quad`], in __linear RGB__.
-    ///
-    /// [`Quad`]: struct.Quad.html
     pub color: [f32; 4],
 
     /// The border color of the [`Quad`], in __linear RGB__.
-    ///
-    /// [`Quad`]: struct.Quad.html
     pub border_color: [f32; 4],
 
     /// The border radius of the [`Quad`].
-    ///
-    /// [`Quad`]: struct.Quad.html
     pub border_radius: f32,
 
     /// The border width of the [`Quad`].
-    ///
-    /// [`Quad`]: struct.Quad.html
     pub border_width: f32,
 }
 
@@ -290,18 +262,12 @@ pub struct Quad {
 #[derive(Debug, Clone, Copy)]
 pub struct Mesh<'a> {
     /// The origin of the vertices of the [`Mesh`].
-    ///
-    /// [`Mesh`]: struct.Mesh.html
     pub origin: Point,
 
     /// The vertex and index buffers of the [`Mesh`].
-    ///
-    /// [`Mesh`]: struct.Mesh.html
     pub buffers: &'a triangle::Mesh2D,
 
     /// The clipping bounds of the [`Mesh`].
-    ///
-    /// [`Mesh`]: struct.Mesh.html
     pub clip_bounds: Rectangle<f32>,
 }
 
@@ -309,38 +275,24 @@ pub struct Mesh<'a> {
 #[derive(Debug, Clone, Copy)]
 pub struct Text<'a> {
     /// The content of the [`Text`].
-    ///
-    /// [`Text`]: struct.Text.html
     pub content: &'a str,
 
     /// The layout bounds of the [`Text`].
-    ///
-    /// [`Text`]: struct.Text.html
     pub bounds: Rectangle,
 
     /// The color of the [`Text`], in __linear RGB_.
-    ///
-    /// [`Text`]: struct.Text.html
     pub color: [f32; 4],
 
     /// The size of the [`Text`].
-    ///
-    /// [`Text`]: struct.Text.html
     pub size: f32,
 
     /// The font of the [`Text`].
-    ///
-    /// [`Text`]: struct.Text.html
     pub font: Font,
 
     /// The horizontal alignment of the [`Text`].
-    ///
-    /// [`Text`]: struct.Text.html
     pub horizontal_alignment: HorizontalAlignment,
 
     /// The vertical alignment of the [`Text`].
-    ///
-    /// [`Text`]: struct.Text.html
     pub vertical_alignment: VerticalAlignment,
 }
 

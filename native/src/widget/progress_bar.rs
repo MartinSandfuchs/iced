@@ -33,8 +33,6 @@ impl<Renderer: self::Renderer> ProgressBar<Renderer> {
     /// It expects:
     ///   * an inclusive range of possible values
     ///   * the current value of the [`ProgressBar`]
-    ///
-    /// [`ProgressBar`]: struct.ProgressBar.html
     pub fn new(range: RangeInclusive<f32>, value: f32) -> Self {
         ProgressBar {
             value: value.max(*range.start()).min(*range.end()),
@@ -46,24 +44,18 @@ impl<Renderer: self::Renderer> ProgressBar<Renderer> {
     }
 
     /// Sets the width of the [`ProgressBar`].
-    ///
-    /// [`ProgressBar`]: struct.ProgressBar.html
     pub fn width(mut self, width: Length) -> Self {
         self.width = width;
         self
     }
 
     /// Sets the height of the [`ProgressBar`].
-    ///
-    /// [`ProgressBar`]: struct.ProgressBar.html
     pub fn height(mut self, height: Length) -> Self {
         self.height = Some(height);
         self
     }
 
     /// Sets the style of the [`ProgressBar`].
-    ///
-    /// [`ProgressBar`]: struct.ProgressBar.html
     pub fn style(mut self, style: impl Into<Renderer::Style>) -> Self {
         self.style = style.into();
         self
@@ -104,6 +96,7 @@ where
         _defaults: &Renderer::Defaults,
         layout: Layout<'_>,
         _cursor_position: Point,
+        _viewport: &Rectangle,
     ) -> Renderer::Output {
         renderer.draw(
             layout.bounds(),
@@ -127,15 +120,12 @@ where
 /// Your [renderer] will need to implement this trait before being
 /// able to use a [`ProgressBar`] in your user interface.
 ///
-/// [`ProgressBar`]: struct.ProgressBar.html
-/// [renderer]: ../../renderer/index.html
+/// [renderer]: crate::renderer
 pub trait Renderer: crate::Renderer {
     /// The style supported by this renderer.
     type Style: Default;
 
     /// The default height of a [`ProgressBar`].
-    ///
-    /// [`ProgressBar`]: struct.ProgressBar.html
     const DEFAULT_HEIGHT: u16;
 
     /// Draws a [`ProgressBar`].
@@ -146,8 +136,6 @@ pub trait Renderer: crate::Renderer {
     ///   * the current value of the [`ProgressBar`]
     ///   * maybe a specific background of the [`ProgressBar`]
     ///   * maybe a specific active color of the [`ProgressBar`]
-    ///
-    /// [`ProgressBar`]: struct.ProgressBar.html
     fn draw(
         &self,
         bounds: Rectangle,

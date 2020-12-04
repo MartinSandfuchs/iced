@@ -1,6 +1,6 @@
 //! A renderer-agnostic native GUI runtime.
 //!
-//! ![`iced_native` crate graph](https://github.com/hecrj/iced/blob/cae26cb7bc627f4a5b3bcf1cd023a0c552e8c65e/docs/graphs/native.png?raw=true)
+//! ![The native path of the Iced ecosystem](https://github.com/hecrj/iced/raw/improvement/update-ecosystem-and-roadmap/docs/graphs/native.png)
 //!
 //! `iced_native` takes [`iced_core`] and builds a native runtime on top of it,
 //! featuring:
@@ -27,14 +27,13 @@
 //! [`iced_winit`]: https://github.com/hecrj/iced/tree/master/winit
 //! [`druid`]: https://github.com/xi-editor/druid
 //! [`raw-window-handle`]: https://github.com/rust-windowing/raw-window-handle
-//! [`Widget`]: widget/trait.Widget.html
-//! [`UserInterface`]: struct.UserInterface.html
-//! [renderer]: renderer/index.html
+//! [renderer]: crate::renderer
 #![deny(missing_docs)]
 #![deny(missing_debug_implementations)]
 #![deny(unused_results)]
 #![forbid(unsafe_code)]
 #![forbid(rust_2018_idioms)]
+pub mod event;
 pub mod keyboard;
 pub mod layout;
 pub mod mouse;
@@ -47,7 +46,6 @@ pub mod window;
 
 mod clipboard;
 mod element;
-mod event;
 mod hasher;
 mod runtime;
 mod user_interface;

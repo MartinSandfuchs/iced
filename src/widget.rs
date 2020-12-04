@@ -13,14 +13,11 @@
 //!
 //! These widgets have their own module with a `State` type. For instance, a
 //! [`TextInput`] has some [`text_input::State`].
-//!
-//! [`TextInput`]: text_input/struct.TextInput.html
-//! [`text_input::State`]: text_input/struct.State.html
 #[cfg(not(target_arch = "wasm32"))]
 mod platform {
     pub use crate::renderer::widget::{
         button, checkbox, container, pane_grid, pick_list, progress_bar, radio,
-        scrollable, slider, text_input, Column, Row, Space, Text,
+        rule, scrollable, slider, text_input, Column, Row, Space, Text,
     };
 
     #[cfg(any(feature = "canvas", feature = "glow_canvas"))]
@@ -29,6 +26,13 @@ mod platform {
         doc(cfg(any(feature = "canvas", feature = "glow_canvas")))
     )]
     pub use crate::renderer::widget::canvas;
+
+    #[cfg(any(feature = "qr_code", feature = "glow_qr_code"))]
+    #[cfg_attr(
+        docsrs,
+        doc(cfg(any(feature = "qr_code", feature = "glow_qr_code")))
+    )]
+    pub use crate::renderer::widget::qr_code;
 
     #[cfg_attr(docsrs, doc(cfg(feature = "image")))]
     pub mod image {
@@ -48,13 +52,17 @@ mod platform {
     pub use {
         button::Button, checkbox::Checkbox, container::Container, image::Image,
         pane_grid::PaneGrid, pick_list::PickList, progress_bar::ProgressBar,
-        radio::Radio, scrollable::Scrollable, slider::Slider, svg::Svg,
-        text_input::TextInput,
+        radio::Radio, rule::Rule, scrollable::Scrollable, slider::Slider,
+        svg::Svg, text_input::TextInput,
     };
 
     #[cfg(any(feature = "canvas", feature = "glow_canvas"))]
     #[doc(no_inline)]
     pub use canvas::Canvas;
+
+    #[cfg(any(feature = "qr_code", feature = "glow_qr_code"))]
+    #[doc(no_inline)]
+    pub use qr_code::QRCode;
 }
 
 #[cfg(target_arch = "wasm32")]

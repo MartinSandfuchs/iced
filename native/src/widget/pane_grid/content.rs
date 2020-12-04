@@ -1,12 +1,13 @@
 use crate::container;
+use crate::event::{self, Event};
 use crate::layout;
 use crate::overlay;
 use crate::pane_grid::{self, TitleBar};
-use crate::{Clipboard, Element, Event, Hasher, Layout, Point, Size};
+use crate::{Clipboard, Element, Hasher, Layout, Point, Size};
 
 /// The content of a [`Pane`].
 ///
-/// [`Pane`]: struct.Pane.html
+/// [`Pane`]: crate::widget::pane_grid::Pane
 #[allow(missing_debug_implementations)]
 pub struct Content<'a, Message, Renderer: pane_grid::Renderer> {
     title_bar: Option<TitleBar<'a, Message, Renderer>>,
@@ -19,8 +20,6 @@ where
     Renderer: pane_grid::Renderer,
 {
     /// Creates a new [`Content`] with the provided body.
-    ///
-    /// [`Content`]: struct.Content.html
     pub fn new(body: impl Into<Element<'a, Message, Renderer>>) -> Self {
         Self {
             title_bar: None,
@@ -30,9 +29,6 @@ where
     }
 
     /// Sets the [`TitleBar`] of this [`Content`].
-    ///
-    /// [`TitleBar`]: struct.TitleBar.html
-    /// [`Content`]: struct.Content.html
     pub fn title_bar(
         mut self,
         title_bar: TitleBar<'a, Message, Renderer>,
@@ -41,9 +37,7 @@ where
         self
     }
 
-    /// Sets the style of the [`TitleBar`].
-    ///
-    /// [`TitleBar`]: struct.TitleBar.html
+    /// Sets the style of the [`Content`].
     pub fn style(mut self, style: impl Into<Renderer::Style>) -> Self {
         self.style = style.into();
         self
@@ -56,9 +50,7 @@ where
 {
     /// Draws the [`Content`] with the provided [`Renderer`] and [`Layout`].
     ///
-    /// [`Content`]: struct.Content.html
-    /// [`Renderer`]: trait.Renderer.html
-    /// [`Layout`]: ../layout/struct.Layout.html
+    /// [`Renderer`]: crate::widget::pane_grid::Renderer
     pub fn draw(
         &self,
         renderer: &mut Renderer,
@@ -93,9 +85,6 @@ where
 
     /// Returns whether the [`Content`] with the given [`Layout`] can be picked
     /// at the provided cursor position.
-    ///
-    /// [`Content`]: struct.Content.html
-    /// [`Layout`]: ../layout/struct.Layout.html
     pub fn can_be_picked_at(
         &self,
         layout: Layout<'_>,
@@ -154,11 +143,13 @@ where
         messages: &mut Vec<Message>,
         renderer: &Renderer,
         clipboard: Option<&dyn Clipboard>,
-    ) {
+    ) -> event::Status {
+        let mut event_status = event::Status::Ignored;
+
         let body_layout = if let Some(title_bar) = &mut self.title_bar {
             let mut children = layout.children();
 
-            title_bar.on_event(
+            event_status = title_bar.on_event(
                 event.clone(),
                 children.next().unwrap(),
                 cursor_position,
@@ -172,7 +163,7 @@ where
             layout
         };
 
-        self.body.on_event(
+        let body_status = self.body.on_event(
             event,
             body_layout,
             cursor_position,
@@ -180,9 +171,15 @@ where
             renderer,
             clipboard,
         );
+
+        event_status.merge(body_status)
     }
 
     pub(crate) fn hash_layout(&self, state: &mut Hasher) {
+        if let Some(title_bar) = &self.title_bar {
+            title_bar.hash_layout(state);
+        }
+
         self.body.hash_layout(state);
     }
 

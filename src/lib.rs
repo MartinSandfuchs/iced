@@ -30,7 +30,7 @@
 //! [windowing shell]: https://github.com/hecrj/iced/tree/master/winit
 //! [`dodrio`]: https://github.com/fitzgen/dodrio
 //! [web runtime]: https://github.com/hecrj/iced/tree/master/web
-//! [examples]: https://github.com/hecrj/iced/tree/0.1/examples
+//! [examples]: https://github.com/hecrj/iced/tree/0.2/examples
 //! [repository]: https://github.com/hecrj/iced
 //!
 //! # Overview
@@ -171,8 +171,6 @@
 //!
 //! [Elm]: https://elm-lang.org/
 //! [The Elm Architecture]: https://guide.elm-lang.org/architecture/
-//! [`Application`]: trait.Application.html
-//! [`Sandbox`]: trait.Sandbox.html
 #![deny(missing_docs)]
 #![deny(missing_debug_implementations)]
 #![deny(unused_results)]
@@ -181,6 +179,8 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 mod application;
 mod element;
+mod error;
+mod result;
 mod sandbox;
 
 pub mod executor;
@@ -191,10 +191,17 @@ pub mod widget;
 pub mod window;
 
 #[cfg(all(
-    any(feature = "tokio", feature = "async-std"),
+    any(feature = "tokio", feature = "tokio_old", feature = "async-std"),
     not(target_arch = "wasm32")
 ))]
-#[cfg_attr(docsrs, doc(cfg(any(feature = "tokio", feature = "async-std"))))]
+#[cfg_attr(
+    docsrs,
+    doc(cfg(any(
+        feature = "tokio",
+        feature = "tokio_old",
+        feature = "async-std"
+    )))
+)]
 pub mod time;
 
 #[cfg(all(
@@ -225,7 +232,9 @@ pub use widget::*;
 
 pub use application::Application;
 pub use element::Element;
+pub use error::Error;
 pub use executor::Executor;
+pub use result::Result;
 pub use sandbox::Sandbox;
 pub use settings::Settings;
 

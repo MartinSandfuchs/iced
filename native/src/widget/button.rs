@@ -1,12 +1,11 @@
 //! Allow your users to perform actions by pressing a button.
 //!
 //! A [`Button`] has some local [`State`].
-//!
-//! [`Button`]: struct.Button.html
-//! [`State`]: struct.State.html
+use crate::event::{self, Event};
+use crate::layout;
+use crate::mouse;
 use crate::{
-    layout, mouse, Clipboard, Element, Event, Hasher, Layout, Length, Point,
-    Rectangle, Widget,
+    Clipboard, Element, Hasher, Layout, Length, Point, Rectangle, Widget,
 };
 use std::hash::Hash;
 
@@ -18,6 +17,7 @@ use std::hash::Hash;
 /// # type Button<'a, Message> =
 /// #     iced_native::Button<'a, Message, iced_native::renderer::Null>;
 /// #
+/// #[derive(Clone)]
 /// enum Message {
 ///     ButtonPressed,
 /// }
@@ -41,13 +41,11 @@ pub struct Button<'a, Message, Renderer: self::Renderer> {
 
 impl<'a, Message, Renderer> Button<'a, Message, Renderer>
 where
+    Message: Clone,
     Renderer: self::Renderer,
 {
     /// Creates a new [`Button`] with some local [`State`] and the given
     /// content.
-    ///
-    /// [`Button`]: struct.Button.html
-    /// [`State`]: struct.State.html
     pub fn new<E>(state: &'a mut State, content: E) -> Self
     where
         E: Into<Element<'a, Message, Renderer>>,
@@ -66,56 +64,42 @@ where
     }
 
     /// Sets the width of the [`Button`].
-    ///
-    /// [`Button`]: struct.Button.html
     pub fn width(mut self, width: Length) -> Self {
         self.width = width;
         self
     }
 
     /// Sets the height of the [`Button`].
-    ///
-    /// [`Button`]: struct.Button.html
     pub fn height(mut self, height: Length) -> Self {
         self.height = height;
         self
     }
 
     /// Sets the minimum width of the [`Button`].
-    ///
-    /// [`Button`]: struct.Button.html
     pub fn min_width(mut self, min_width: u32) -> Self {
         self.min_width = min_width;
         self
     }
 
     /// Sets the minimum height of the [`Button`].
-    ///
-    /// [`Button`]: struct.Button.html
     pub fn min_height(mut self, min_height: u32) -> Self {
         self.min_height = min_height;
         self
     }
 
     /// Sets the padding of the [`Button`].
-    ///
-    /// [`Button`]: struct.Button.html
     pub fn padding(mut self, padding: u16) -> Self {
         self.padding = padding;
         self
     }
 
     /// Sets the message that will be produced when the [`Button`] is pressed.
-    ///
-    /// [`Button`]: struct.Button.html
     pub fn on_press(mut self, msg: Message) -> Self {
         self.on_press = Some(msg);
         self
     }
 
     /// Sets the style of the [`Button`].
-    ///
-    /// [`Button`]: struct.Button.html
     pub fn style(mut self, style: impl Into<Renderer::Style>) -> Self {
         self.style = style.into();
         self
@@ -123,8 +107,6 @@ where
 }
 
 /// The local state of a [`Button`].
-///
-/// [`Button`]: struct.Button.html
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct State {
     is_pressed: bool,
@@ -132,8 +114,6 @@ pub struct State {
 
 impl State {
     /// Creates a new [`State`].
-    ///
-    /// [`State`]: struct.State.html
     pub fn new() -> State {
         State::default()
     }
@@ -142,8 +122,8 @@ impl State {
 impl<'a, Message, Renderer> Widget<Message, Renderer>
     for Button<'a, Message, Renderer>
 where
-    Renderer: self::Renderer,
     Message: Clone,
+    Renderer: self::Renderer,
 {
     fn width(&self) -> Length {
         self.width
@@ -182,31 +162,38 @@ where
         messages: &mut Vec<Message>,
         _renderer: &Renderer,
         _clipboard: Option<&dyn Clipboard>,
-    ) {
+    ) -> event::Status {
         match event {
             Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) => {
                 if self.on_press.is_some() {
                     let bounds = layout.bounds();
 
-                    self.state.is_pressed = bounds.contains(cursor_position);
+                    if bounds.contains(cursor_position) {
+                        self.state.is_pressed = true;
+
+                        return event::Status::Captured;
+                    }
                 }
             }
             Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
                 if let Some(on_press) = self.on_press.clone() {
                     let bounds = layout.bounds();
 
-                    let is_clicked = self.state.is_pressed
-                        && bounds.contains(cursor_position);
+                    if self.state.is_pressed {
+                        self.state.is_pressed = false;
 
-                    self.state.is_pressed = false;
+                        if bounds.contains(cursor_position) {
+                            messages.push(on_press);
+                        }
 
-                    if is_clicked {
-                        messages.push(on_press);
+                        return event::Status::Captured;
                     }
                 }
             }
             _ => {}
         }
+
+        event::Status::Ignored
     }
 
     fn draw(
@@ -215,6 +202,7 @@ where
         defaults: &Renderer::Defaults,
         layout: Layout<'_>,
         cursor_position: Point,
+        _viewport: &Rectangle,
     ) -> Renderer::Output {
         renderer.draw(
             defaults,
@@ -242,20 +230,15 @@ where
 /// Your [renderer] will need to implement this trait before being
 /// able to use a [`Button`] in your user interface.
 ///
-/// [`Button`]: struct.Button.html
-/// [renderer]: ../../renderer/index.html
+/// [renderer]: crate::renderer
 pub trait Renderer: crate::Renderer + Sized {
     /// The default padding of a [`Button`].
-    ///
-    /// [`Button`]: struct.Button.html
     const DEFAULT_PADDING: u16;
 
     /// The style supported by this renderer.
     type Style: Default;
 
     /// Draws a [`Button`].
-    ///
-    /// [`Button`]: struct.Button.html
     fn draw<Message>(
         &mut self,
         defaults: &Self::Defaults,
@@ -272,8 +255,8 @@ pub trait Renderer: crate::Renderer + Sized {
 impl<'a, Message, Renderer> From<Button<'a, Message, Renderer>>
     for Element<'a, Message, Renderer>
 where
-    Renderer: 'a + self::Renderer,
     Message: 'a + Clone,
+    Renderer: 'a + self::Renderer,
 {
     fn from(
         button: Button<'a, Message, Renderer>,

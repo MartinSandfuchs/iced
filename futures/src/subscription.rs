@@ -19,8 +19,7 @@ use crate::BoxStream;
 /// This type is normally aliased by runtimes with a specific `Event` and/or
 /// `Hasher`.
 ///
-/// [`Command`]: ../struct.Command.html
-/// [`Subscription`]: struct.Subscription.html
+/// [`Command`]: crate::Command
 pub struct Subscription<Hasher, Event, Output> {
     recipes: Vec<Box<dyn Recipe<Hasher, Event, Output = Output>>>,
 }
@@ -30,8 +29,6 @@ where
     H: std::hash::Hasher,
 {
     /// Returns an empty [`Subscription`] that will not produce any output.
-    ///
-    /// [`Subscription`]: struct.Subscription.html
     pub fn none() -> Self {
         Self {
             recipes: Vec::new(),
@@ -39,9 +36,6 @@ where
     }
 
     /// Creates a [`Subscription`] from a [`Recipe`] describing it.
-    ///
-    /// [`Subscription`]: struct.Subscription.html
-    /// [`Recipe`]: trait.Recipe.html
     pub fn from_recipe(
         recipe: impl Recipe<H, E, Output = O> + 'static,
     ) -> Self {
@@ -52,8 +46,6 @@ where
 
     /// Batches all the provided subscriptions and returns the resulting
     /// [`Subscription`].
-    ///
-    /// [`Subscription`]: struct.Subscription.html
     pub fn batch(
         subscriptions: impl IntoIterator<Item = Subscription<H, E, O>>,
     ) -> Self {
@@ -66,8 +58,6 @@ where
     }
 
     /// Returns the different recipes of the [`Subscription`].
-    ///
-    /// [`Subscription`]: struct.Subscription.html
     pub fn recipes(self) -> Vec<Box<dyn Recipe<H, E, Output = O>>> {
         self.recipes
     }
@@ -75,12 +65,6 @@ where
     /// Adds a value to the [`Subscription`] context.
     ///
     /// The value will be part of the identity of a [`Subscription`].
-    ///
-    /// This is necessary if you want to use multiple instances of the same
-    /// [`Subscription`] to produce different kinds of messages based on some
-    /// external data.
-    ///
-    /// [`Subscription`]: struct.Subscription.html
     pub fn with<T>(mut self, value: T) -> Subscription<H, E, (T, O)>
     where
         H: 'static,
@@ -101,26 +85,19 @@ where
     }
 
     /// Transforms the [`Subscription`] output with the given function.
-    ///
-    /// [`Subscription`]: struct.Subscription.html
-    pub fn map<A>(
-        mut self,
-        f: impl Fn(O) -> A + Send + Sync + 'static,
-    ) -> Subscription<H, E, A>
+    pub fn map<A>(mut self, f: fn(O) -> A) -> Subscription<H, E, A>
     where
         H: 'static,
         E: 'static,
         O: 'static,
         A: 'static,
     {
-        let function = std::sync::Arc::new(f);
-
         Subscription {
             recipes: self
                 .recipes
                 .drain(..)
                 .map(|recipe| {
-                    Box::new(Map::new(recipe, function.clone()))
+                    Box::new(Map::new(recipe, f))
                         as Box<dyn Recipe<H, E, Output = A>>
                 })
                 .collect(),
@@ -140,9 +117,6 @@ impl<I, O, H> std::fmt::Debug for Subscription<I, O, H> {
 /// by runtimes to run and identify subscriptions. You can use it to create your
 /// own!
 ///
-/// [`Subscription`]: struct.Subscription.html
-/// [`Recipe`]: trait.Recipe.html
-///
 /// # Examples
 /// The repository has a couple of [examples] that use a custom [`Recipe`]:
 ///
@@ -151,23 +125,17 @@ impl<I, O, H> std::fmt::Debug for Subscription<I, O, H> {
 /// - [`stopwatch`], a watch with start/stop and reset buttons showcasing how
 /// to listen to time.
 ///
-/// [examples]: https://github.com/hecrj/iced/tree/0.1/examples
-/// [`download_progress`]: https://github.com/hecrj/iced/tree/0.1/examples/download_progress
-/// [`stopwatch`]: https://github.com/hecrj/iced/tree/0.1/examples/stopwatch
+/// [examples]: https://github.com/hecrj/iced/tree/0.2/examples
+/// [`download_progress`]: https://github.com/hecrj/iced/tree/0.2/examples/download_progress
+/// [`stopwatch`]: https://github.com/hecrj/iced/tree/0.2/examples/stopwatch
 pub trait Recipe<Hasher: std::hash::Hasher, Event> {
     /// The events that will be produced by a [`Subscription`] with this
     /// [`Recipe`].
-    ///
-    /// [`Subscription`]: struct.Subscription.html
-    /// [`Recipe`]: trait.Recipe.html
     type Output;
 
     /// Hashes the [`Recipe`].
     ///
     /// This is used by runtimes to uniquely identify a [`Subscription`].
-    ///
-    /// [`Subscription`]: struct.Subscription.html
-    /// [`Recipe`]: trait.Recipe.html
     fn hash(&self, state: &mut Hasher);
 
     /// Executes the [`Recipe`] and produces the stream of events of its
@@ -175,9 +143,6 @@ pub trait Recipe<Hasher: std::hash::Hasher, Event> {
     ///
     /// It receives some stream of generic events, which is normally defined by
     /// shells.
-    ///
-    /// [`Subscription`]: struct.Subscription.html
-    /// [`Recipe`]: trait.Recipe.html
     fn stream(
         self: Box<Self>,
         input: BoxStream<Event>,
@@ -186,13 +151,13 @@ pub trait Recipe<Hasher: std::hash::Hasher, Event> {
 
 struct Map<Hasher, Event, A, B> {
     recipe: Box<dyn Recipe<Hasher, Event, Output = A>>,
-    mapper: std::sync::Arc<dyn Fn(A) -> B + Send + Sync>,
+    mapper: fn(A) -> B,
 }
 
 impl<H, E, A, B> Map<H, E, A, B> {
     fn new(
         recipe: Box<dyn Recipe<H, E, Output = A>>,
-        mapper: std::sync::Arc<dyn Fn(A) -> B + Send + Sync + 'static>,
+        mapper: fn(A) -> B,
     ) -> Self {
         Map { recipe, mapper }
     }
@@ -209,8 +174,8 @@ where
     fn hash(&self, state: &mut H) {
         use std::hash::Hash;
 
-        std::any::TypeId::of::<B>().hash(state);
         self.recipe.hash(state);
+        self.mapper.hash(state);
     }
 
     fn stream(self: Box<Self>, input: BoxStream<E>) -> BoxStream<Self::Output> {

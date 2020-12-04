@@ -94,6 +94,7 @@ where
         _defaults: &Renderer::Defaults,
         layout: Layout<'_>,
         _cursor_position: Point,
+        _viewport: &iced_core::Rectangle,
     ) -> Renderer::Output {
         renderer.draw(&self.sample, layout)
     }

@@ -1,8 +1,12 @@
 //! Create choices using radio buttons.
+use crate::event::{self, Event};
+use crate::layout;
+use crate::mouse;
+use crate::row;
+use crate::text;
 use crate::{
-    layout, mouse, row, text, Align, Clipboard, Element, Event, Hasher,
-    HorizontalAlignment, Layout, Length, Point, Rectangle, Row, Text,
-    VerticalAlignment, Widget,
+    Align, Clipboard, Element, Hasher, HorizontalAlignment, Layout, Length,
+    Point, Rectangle, Row, Text, VerticalAlignment, Widget,
 };
 
 use std::hash::Hash;
@@ -47,6 +51,8 @@ pub struct Radio<Message, Renderer: self::Renderer + text::Renderer> {
 
 impl<Message, Renderer: self::Renderer + text::Renderer>
     Radio<Message, Renderer>
+where
+    Message: Clone,
 {
     /// Creates a new [`Radio`] button.
     ///
@@ -56,8 +62,6 @@ impl<Message, Renderer: self::Renderer + text::Renderer>
     ///   * the current selected value
     ///   * a function that will be called when the [`Radio`] is selected. It
     ///   receives the value of the radio and must produce a `Message`.
-    ///
-    /// [`Radio`]: struct.Radio.html
     pub fn new<F, V>(
         value: V,
         label: impl Into<String>,
@@ -81,40 +85,30 @@ impl<Message, Renderer: self::Renderer + text::Renderer>
     }
 
     /// Sets the size of the [`Radio`] button.
-    ///
-    /// [`Radio`]: struct.Radio.html
     pub fn size(mut self, size: u16) -> Self {
         self.size = size;
         self
     }
 
     /// Sets the width of the [`Radio`] button.
-    ///
-    /// [`Radio`]: struct.Radio.html
     pub fn width(mut self, width: Length) -> Self {
         self.width = width;
         self
     }
 
     /// Sets the spacing between the [`Radio`] button and the text.
-    ///
-    /// [`Radio`]: struct.Radio.html
     pub fn spacing(mut self, spacing: u16) -> Self {
         self.spacing = spacing;
         self
     }
 
     /// Sets the text size of the [`Radio`] button.
-    ///
-    /// [`Radio`]: struct.Radio.html
     pub fn text_size(mut self, text_size: u16) -> Self {
         self.text_size = Some(text_size);
         self
     }
 
     /// Sets the style of the [`Radio`] button.
-    ///
-    /// [`Radio`]: struct.Radio.html
     pub fn style(mut self, style: impl Into<Renderer::Style>) -> Self {
         self.style = style.into();
         self
@@ -123,8 +117,8 @@ impl<Message, Renderer: self::Renderer + text::Renderer>
 
 impl<Message, Renderer> Widget<Message, Renderer> for Radio<Message, Renderer>
 where
-    Renderer: self::Renderer + text::Renderer + row::Renderer,
     Message: Clone,
+    Renderer: self::Renderer + text::Renderer + row::Renderer,
 {
     fn width(&self) -> Length {
         self.width
@@ -164,15 +158,19 @@ where
         messages: &mut Vec<Message>,
         _renderer: &Renderer,
         _clipboard: Option<&dyn Clipboard>,
-    ) {
+    ) -> event::Status {
         match event {
             Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) => {
                 if layout.bounds().contains(cursor_position) {
                     messages.push(self.on_click.clone());
+
+                    return event::Status::Captured;
                 }
             }
             _ => {}
         }
+
+        event::Status::Ignored
     }
 
     fn draw(
@@ -181,6 +179,7 @@ where
         defaults: &Renderer::Defaults,
         layout: Layout<'_>,
         cursor_position: Point,
+        _viewport: &Rectangle,
     ) -> Renderer::Output {
         let bounds = layout.bounds();
         let mut children = layout.children();
@@ -226,20 +225,15 @@ where
 /// Your [renderer] will need to implement this trait before being
 /// able to use a [`Radio`] button in your user interface.
 ///
-/// [`Radio`]: struct.Radio.html
-/// [renderer]: ../../renderer/index.html
+/// [renderer]: crate::renderer
 pub trait Renderer: crate::Renderer {
     /// The style supported by this renderer.
     type Style: Default;
 
     /// The default size of a [`Radio`] button.
-    ///
-    /// [`Radio`]: struct.Radio.html
     const DEFAULT_SIZE: u16;
 
     /// The default spacing of a [`Radio`] button.
-    ///
-    /// [`Radio`]: struct.Radio.html
     const DEFAULT_SPACING: u16;
 
     /// Draws a [`Radio`] button.
@@ -249,8 +243,6 @@ pub trait Renderer: crate::Renderer {
     ///   * whether the [`Radio`] is selected or not
     ///   * whether the mouse is over the [`Radio`] or not
     ///   * the drawn label of the [`Radio`]
-    ///
-    /// [`Radio`]: struct.Radio.html
     fn draw(
         &mut self,
         bounds: Rectangle,
@@ -264,8 +256,8 @@ pub trait Renderer: crate::Renderer {
 impl<'a, Message, Renderer> From<Radio<Message, Renderer>>
     for Element<'a, Message, Renderer>
 where
-    Renderer: 'a + self::Renderer + row::Renderer + text::Renderer,
     Message: 'a + Clone,
+    Renderer: 'a + self::Renderer + row::Renderer + text::Renderer,
 {
     fn from(radio: Radio<Message, Renderer>) -> Element<'a, Message, Renderer> {
         Element::new(radio)

@@ -1,7 +1,12 @@
 //! Navigate an endless amount of content with a scrollbar.
+use crate::column;
+use crate::event::{self, Event};
+use crate::layout;
+use crate::mouse;
+use crate::overlay;
 use crate::{
-    column, layout, mouse, overlay, Align, Clipboard, Column, Element, Event,
-    Hasher, Layout, Length, Point, Rectangle, Size, Vector, Widget,
+    Align, Clipboard, Column, Element, Hasher, Layout, Length, Point,
+    Rectangle, Size, Vector, Widget,
 };
 
 use std::{f32, hash::Hash, u32};
@@ -13,20 +18,23 @@ pub struct Scrollable<'a, Message, Renderer: self::Renderer> {
     state: &'a mut State,
     height: Length,
     max_height: u32,
+    scrollbar_width: u16,
+    scrollbar_margin: u16,
+    scroller_width: u16,
     content: Column<'a, Message, Renderer>,
     style: Renderer::Style,
 }
 
 impl<'a, Message, Renderer: self::Renderer> Scrollable<'a, Message, Renderer> {
     /// Creates a new [`Scrollable`] with the given [`State`].
-    ///
-    /// [`Scrollable`]: struct.Scrollable.html
-    /// [`State`]: struct.State.html
     pub fn new(state: &'a mut State) -> Self {
         Scrollable {
             state,
             height: Length::Shrink,
             max_height: u32::MAX,
+            scrollbar_width: 10,
+            scrollbar_margin: 0,
+            scroller_width: 10,
             content: Column::new(),
             style: Renderer::Style::default(),
         }
@@ -43,64 +51,68 @@ impl<'a, Message, Renderer: self::Renderer> Scrollable<'a, Message, Renderer> {
     }
 
     /// Sets the padding of the [`Scrollable`].
-    ///
-    /// [`Scrollable`]: struct.Scrollable.html
     pub fn padding(mut self, units: u16) -> Self {
         self.content = self.content.padding(units);
         self
     }
 
     /// Sets the width of the [`Scrollable`].
-    ///
-    /// [`Scrollable`]: struct.Scrollable.html
     pub fn width(mut self, width: Length) -> Self {
         self.content = self.content.width(width);
         self
     }
 
     /// Sets the height of the [`Scrollable`].
-    ///
-    /// [`Scrollable`]: struct.Scrollable.html
     pub fn height(mut self, height: Length) -> Self {
         self.height = height;
         self
     }
 
     /// Sets the maximum width of the [`Scrollable`].
-    ///
-    /// [`Scrollable`]: struct.Scrollable.html
     pub fn max_width(mut self, max_width: u32) -> Self {
         self.content = self.content.max_width(max_width);
         self
     }
 
     /// Sets the maximum height of the [`Scrollable`] in pixels.
-    ///
-    /// [`Scrollable`]: struct.Scrollable.html
     pub fn max_height(mut self, max_height: u32) -> Self {
         self.max_height = max_height;
         self
     }
 
     /// Sets the horizontal alignment of the contents of the [`Scrollable`] .
-    ///
-    /// [`Scrollable`]: struct.Scrollable.html
     pub fn align_items(mut self, align_items: Align) -> Self {
         self.content = self.content.align_items(align_items);
         self
     }
 
+    /// Sets the scrollbar width of the [`Scrollable`] .
+    /// Silently enforces a minimum value of 1.
+    pub fn scrollbar_width(mut self, scrollbar_width: u16) -> Self {
+        self.scrollbar_width = scrollbar_width.max(1);
+        self
+    }
+
+    /// Sets the scrollbar margin of the [`Scrollable`] .
+    pub fn scrollbar_margin(mut self, scrollbar_margin: u16) -> Self {
+        self.scrollbar_margin = scrollbar_margin;
+        self
+    }
+
+    /// Sets the scroller width of the [`Scrollable`] .
+    /// Silently enforces a minimum value of 1.
+    pub fn scroller_width(mut self, scroller_width: u16) -> Self {
+        self.scroller_width = scroller_width.max(1);
+        self
+    }
+
     /// Sets the style of the [`Scrollable`] .
-    ///
-    /// [`Scrollable`]: struct.Scrollable.html
     pub fn style(mut self, style: impl Into<Renderer::Style>) -> Self {
         self.style = style.into();
         self
     }
 
     /// Adds an element to the [`Scrollable`].
-    ///
-    /// [`Scrollable`]: struct.Scrollable.html
     pub fn push<E>(mut self, child: E) -> Self
     where
         E: Into<Element<'a, Message, Renderer>>,
@@ -152,14 +164,56 @@ where
         messages: &mut Vec<Message>,
         renderer: &Renderer,
         clipboard: Option<&dyn Clipboard>,
-    ) {
+    ) -> event::Status {
         let bounds = layout.bounds();
         let is_mouse_over = bounds.contains(cursor_position);
 
         let content = layout.children().next().unwrap();
         let content_bounds = content.bounds();
 
-        // TODO: Event capture. Nested scrollables should capture scroll events.
+        let offset = self.state.offset(bounds, content_bounds);
+        let scrollbar = renderer.scrollbar(
+            bounds,
+            content_bounds,
+            offset,
+            self.scrollbar_width,
+            self.scrollbar_margin,
+            self.scroller_width,
+        );
+        let is_mouse_over_scrollbar = scrollbar
+            .as_ref()
+            .map(|scrollbar| scrollbar.is_mouse_over(cursor_position))
+            .unwrap_or(false);
+
+        let event_status = {
+            let cursor_position = if is_mouse_over && !is_mouse_over_scrollbar {
+                Point::new(
+                    cursor_position.x,
+                    cursor_position.y
+                        + self.state.offset(bounds, content_bounds) as f32,
+                )
+            } else {
+                // TODO: Make `cursor_position` an `Option<Point>` so we can encode
+                // cursor availability.
+                // This will probably happen naturally once we add multi-window
+                // support.
+                Point::new(cursor_position.x, -1.0)
+            };
+
+            self.content.on_event(
+                event.clone(),
+                content,
+                cursor_position,
+                messages,
+                renderer,
+                clipboard,
+            )
+        };
+
+        if let event::Status::Captured = event_status {
+            return event::Status::Captured;
+        }
+
         if is_mouse_over {
             match event {
                 Event::Mouse(mouse::Event::WheelScrolled { delta }) => {
@@ -172,17 +226,12 @@ where
                             self.state.scroll(y, bounds, content_bounds);
                         }
                     }
+
+                    return event::Status::Captured;
                 }
                 _ => {}
             }
         }
-
-        let offset = self.state.offset(bounds, content_bounds);
-        let scrollbar = renderer.scrollbar(bounds, content_bounds, offset);
-        let is_mouse_over_scrollbar = scrollbar
-            .as_ref()
-            .map(|scrollbar| scrollbar.is_mouse_over(cursor_position))
-            .unwrap_or(false);
 
         if self.state.is_scroller_grabbed() {
             match event {
@@ -190,6 +239,8 @@ where
                     mouse::Button::Left,
                 )) => {
                     self.state.scroller_grabbed_at = None;
+
+                    return event::Status::Captured;
                 }
                 Event::Mouse(mouse::Event::CursorMoved { .. }) => {
                     if let (Some(scrollbar), Some(scroller_grabbed_at)) =
@@ -203,6 +254,8 @@ where
                             bounds,
                             content_bounds,
                         );
+
+                        return event::Status::Captured;
                     }
                 }
                 _ => {}
@@ -227,6 +280,8 @@ where
 
                             self.state.scroller_grabbed_at =
                                 Some(scroller_grabbed_at);
+
+                            return event::Status::Captured;
                         }
                     }
                 }
@@ -234,28 +289,7 @@ where
             }
         }
 
-        let cursor_position = if is_mouse_over && !is_mouse_over_scrollbar {
-            Point::new(
-                cursor_position.x,
-                cursor_position.y
-                    + self.state.offset(bounds, content_bounds) as f32,
-            )
-        } else {
-            // TODO: Make `cursor_position` an `Option<Point>` so we can encode
-            // cursor availability.
-            // This will probably happen naturally once we add multi-window
-            // support.
-            Point::new(cursor_position.x, -1.0)
-        };
-
-        self.content.on_event(
-            event,
-            content,
-            cursor_position,
-            messages,
-            renderer,
-            clipboard,
-        )
+        event::Status::Ignored
     }
 
     fn draw(
@@ -264,12 +298,20 @@ where
         defaults: &Renderer::Defaults,
         layout: Layout<'_>,
         cursor_position: Point,
+        _viewport: &Rectangle,
     ) -> Renderer::Output {
         let bounds = layout.bounds();
         let content_layout = layout.children().next().unwrap();
         let content_bounds = content_layout.bounds();
         let offset = self.state.offset(bounds, content_bounds);
-        let scrollbar = renderer.scrollbar(bounds, content_bounds, offset);
+        let scrollbar = renderer.scrollbar(
+            bounds,
+            content_bounds,
+            offset,
+            self.scrollbar_width,
+            self.scrollbar_margin,
+            self.scroller_width,
+        );
 
         let is_mouse_over = bounds.contains(cursor_position);
         let is_mouse_over_scrollbar = scrollbar
@@ -289,6 +331,10 @@ where
                 defaults,
                 content_layout,
                 cursor_position,
+                &Rectangle {
+                    y: bounds.y + offset as f32,
+                    ..bounds
+                },
             )
         };
 
@@ -336,8 +382,6 @@ where
 }
 
 /// The local state of a [`Scrollable`].
-///
-/// [`Scrollable`]: struct.Scrollable.html
 #[derive(Debug, Clone, Copy, Default)]
 pub struct State {
     scroller_grabbed_at: Option<f32>,
@@ -346,17 +390,12 @@ pub struct State {
 
 impl State {
     /// Creates a new [`State`] with the scrollbar located at the top.
-    ///
-    /// [`State`]: struct.State.html
     pub fn new() -> Self {
         State::default()
     }
 
     /// Apply a scrolling offset to the current [`State`], given the bounds of
     /// the [`Scrollable`] and its contents.
-    ///
-    /// [`Scrollable`]: struct.Scrollable.html
-    /// [`State`]: struct.State.html
     pub fn scroll(
         &mut self,
         delta_y: f32,
@@ -377,9 +416,6 @@ impl State {
     ///
     /// `0` represents scrollbar at the top, while `1` represents scrollbar at
     /// the bottom.
-    ///
-    /// [`Scrollable`]: struct.Scrollable.html
-    /// [`State`]: struct.State.html
     pub fn scroll_to(
         &mut self,
         percentage: f32,
@@ -392,9 +428,6 @@ impl State {
 
     /// Returns the current scrolling offset of the [`State`], given the bounds
     /// of the [`Scrollable`] and its contents.
-    ///
-    /// [`Scrollable`]: struct.Scrollable.html
-    /// [`State`]: struct.State.html
     pub fn offset(&self, bounds: Rectangle, content_bounds: Rectangle) -> u32 {
         let hidden_content =
             (content_bounds.height - bounds.height).max(0.0).round() as u32;
@@ -409,28 +442,29 @@ impl State {
 }
 
 /// The scrollbar of a [`Scrollable`].
-///
-/// [`Scrollable`]: struct.Scrollable.html
 #[derive(Debug)]
 pub struct Scrollbar {
+    /// The outer bounds of the scrollable, including the [`Scrollbar`] and
+    /// [`Scroller`].
+    pub outer_bounds: Rectangle,
+
     /// The bounds of the [`Scrollbar`].
-    ///
-    /// [`Scrollbar`]: struct.Scrollbar.html
     pub bounds: Rectangle,
 
+    /// The margin within the [`Scrollbar`].
+    pub margin: u16,
+
     /// The bounds of the [`Scroller`].
-    ///
-    /// [`Scroller`]: struct.Scroller.html
     pub scroller: Scroller,
 }
 
 impl Scrollbar {
     fn is_mouse_over(&self, cursor_position: Point) -> bool {
-        self.bounds.contains(cursor_position)
+        self.outer_bounds.contains(cursor_position)
     }
 
     fn grab_scroller(&self, cursor_position: Point) -> Option<f32> {
-        if self.bounds.contains(cursor_position) {
+        if self.outer_bounds.contains(cursor_position) {
             Some(if self.scroller.bounds.contains(cursor_position) {
                 (cursor_position.y - self.scroller.bounds.y)
                     / self.scroller.bounds.height
@@ -455,13 +489,9 @@ impl Scrollbar {
 }
 
 /// The handle of a [`Scrollbar`].
-///
-/// [`Scrollbar`]: struct.Scrollbar.html
 #[derive(Debug, Clone, Copy)]
 pub struct Scroller {
     /// The bounds of the [`Scroller`].
-    ///
-    /// [`Scroller`]: struct.Scrollbar.html
     pub bounds: Rectangle,
 }
 
@@ -470,22 +500,21 @@ pub struct Scroller {
 /// Your [renderer] will need to implement this trait before being
 /// able to use a [`Scrollable`] in your user interface.
 ///
-/// [`Scrollable`]: struct.Scrollable.html
-/// [renderer]: ../../renderer/index.html
+/// [renderer]: crate::renderer
 pub trait Renderer: column::Renderer + Sized {
     /// The style supported by this renderer.
     type Style: Default;
 
     /// Returns the [`Scrollbar`] given the bounds and content bounds of a
     /// [`Scrollable`].
-    ///
-    /// [`Scrollbar`]: struct.Scrollbar.html
-    /// [`Scrollable`]: struct.Scrollable.html
     fn scrollbar(
         &self,
         bounds: Rectangle,
         content_bounds: Rectangle,
         offset: u32,
+        scrollbar_width: u16,
+        scrollbar_margin: u16,
+        scroller_width: u16,
     ) -> Option<Scrollbar>;
 
     /// Draws the [`Scrollable`].
@@ -499,10 +528,6 @@ pub trait Renderer: column::Renderer + Sized {
     /// - a optional [`Scrollbar`] to be rendered
     /// - the scrolling offset
     /// - the drawn content
-    ///
-    /// [`Scrollbar`]: struct.Scrollbar.html
-    /// [`Scrollable`]: struct.Scrollable.html
-    /// [`State`]: struct.State.html
     fn draw(
         &mut self,
         scrollable: &State,

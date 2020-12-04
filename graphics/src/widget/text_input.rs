@@ -1,9 +1,6 @@
 //! Display fields that can be filled with text.
 //!
 //! A [`TextInput`] has some local [`State`].
-//!
-//! [`TextInput`]: struct.TextInput.html
-//! [`State`]: struct.State.html
 use crate::backend::{self, Backend};
 use crate::{Primitive, Renderer};
 use iced_native::mouse;
@@ -149,8 +146,8 @@ where
                             background: Background::Color(
                                 style_sheet.value_color(),
                             ),
-                            border_radius: 0,
-                            border_width: 0,
+                            border_radius: 0.0,
+                            border_width: 0.0,
                             border_color: Color::TRANSPARENT,
                         },
                         offset,
@@ -193,8 +190,8 @@ where
                             background: Background::Color(
                                 style_sheet.selection_color(),
                             ),
-                            border_radius: 0,
-                            border_width: 0,
+                            border_radius: 0.0,
+                            border_width: 0.0,
                             border_color: Color::TRANSPARENT,
                         },
                         if end == right {

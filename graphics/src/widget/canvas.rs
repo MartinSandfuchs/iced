@@ -3,22 +3,21 @@
 //! A [`Canvas`] widget can be used to draw different kinds of 2D shapes in a
 //! [`Frame`]. It can be used for animation, data visualization, game graphics,
 //! and more!
-//!
-//! [`Canvas`]: struct.Canvas.html
-//! [`Frame`]: struct.Frame.html
 use crate::{Backend, Defaults, Primitive, Renderer};
+use iced_native::layout;
+use iced_native::mouse;
 use iced_native::{
-    layout, mouse, Clipboard, Element, Hasher, Layout, Length, Point, Size,
-    Vector, Widget,
+    Clipboard, Element, Hasher, Layout, Length, Point, Rectangle, Size, Vector,
+    Widget,
 };
 use std::hash::Hash;
 use std::marker::PhantomData;
 
+pub mod event;
 pub mod path;
 
 mod cache;
 mod cursor;
-mod event;
 mod fill;
 mod frame;
 mod geometry;
@@ -38,8 +37,6 @@ pub use stroke::{LineCap, LineJoin, Stroke};
 pub use text::Text;
 
 /// A widget capable of drawing 2D graphics.
-///
-/// [`Canvas`]: struct.Canvas.html
 ///
 /// # Examples
 /// The repository has a couple of [examples] showcasing how to use a
@@ -106,8 +103,6 @@ impl<Message, P: Program<Message>> Canvas<Message, P> {
     const DEFAULT_SIZE: u16 = 100;
 
     /// Creates a new [`Canvas`].
-    ///
-    /// [`Canvas`]: struct.Canvas.html
     pub fn new(program: P) -> Self {
         Canvas {
             width: Length::Units(Self::DEFAULT_SIZE),
@@ -118,16 +113,12 @@ impl<Message, P: Program<Message>> Canvas<Message, P> {
     }
 
     /// Sets the width of the [`Canvas`].
-    ///
-    /// [`Canvas`]: struct.Canvas.html
     pub fn width(mut self, width: Length) -> Self {
         self.width = width;
         self
     }
 
     /// Sets the height of the [`Canvas`].
-    ///
-    /// [`Canvas`]: struct.Canvas.html
     pub fn height(mut self, height: Length) -> Self {
         self.height = height;
         self
@@ -166,12 +157,15 @@ where
         messages: &mut Vec<Message>,
         _renderer: &Renderer<B>,
         _clipboard: Option<&dyn Clipboard>,
-    ) {
+    ) -> event::Status {
         let bounds = layout.bounds();
 
         let canvas_event = match event {
             iced_native::Event::Mouse(mouse_event) => {
                 Some(Event::Mouse(mouse_event))
+            }
+            iced_native::Event::Keyboard(keyboard_event) => {
+                Some(Event::Keyboard(keyboard_event))
             }
             _ => None,
         };
@@ -179,12 +173,17 @@ where
         let cursor = Cursor::from_window_position(cursor_position);
 
         if let Some(canvas_event) = canvas_event {
-            if let Some(message) =
-                self.program.update(canvas_event, bounds, cursor)
-            {
+            let (event_status, message) =
+                self.program.update(canvas_event, bounds, cursor);
+
+            if let Some(message) = message {
                 messages.push(message);
             }
+
+            return event_status;
         }
+
+        event::Status::Ignored
     }
 
     fn draw(
@@ -193,6 +192,7 @@ where
         _defaults: &Defaults,
         layout: Layout<'_>,
         cursor_position: Point,
+        _viewport: &Rectangle,
     ) -> (Primitive, mouse::Interaction) {
         let bounds = layout.bounds();
         let translation = Vector::new(bounds.x, bounds.y);

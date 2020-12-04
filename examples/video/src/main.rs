@@ -132,4 +132,5 @@ fn main() {
         flags: path.clone(),
         ..Settings::default()
     })
+    .unwrap();
 }

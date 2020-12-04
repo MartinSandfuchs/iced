@@ -3,7 +3,7 @@
 //! [`winit`]: https://github.com/rust-windowing/winit
 //! [`iced_native`]: https://github.com/hecrj/iced/tree/master/native
 use crate::{
-    keyboard::{self, KeyCode, ModifiersState},
+    keyboard::{self, KeyCode, Modifiers},
     mouse, window, Event, Mode, Point,
 };
 
@@ -39,6 +39,12 @@ pub fn window_event(
                 x: position.x as f32,
                 y: position.y as f32,
             }))
+        }
+        WindowEvent::CursorEntered { .. } => {
+            Some(Event::Mouse(mouse::Event::CursorEntered))
+        }
+        WindowEvent::CursorLeft { .. } => {
+            Some(Event::Mouse(mouse::Event::CursorLeft))
         }
         WindowEvent::MouseInput { button, state, .. } => {
             let button = mouse_button(*button);
@@ -83,7 +89,7 @@ pub fn window_event(
             ..
         } => Some(Event::Keyboard({
             let key_code = key_code(*virtual_keycode);
-            let modifiers = modifiers_state(modifiers);
+            let modifiers = self::modifiers(modifiers);
 
             match state {
                 winit::event::ElementState::Pressed => {
@@ -101,7 +107,7 @@ pub fn window_event(
             }
         })),
         WindowEvent::ModifiersChanged(new_modifiers) => Some(Event::Keyboard(
-            keyboard::Event::ModifiersChanged(modifiers_state(*new_modifiers)),
+            keyboard::Event::ModifiersChanged(self::modifiers(*new_modifiers)),
         )),
         WindowEvent::HoveredFile(path) => {
             Some(Event::Window(window::Event::FileHovered(path.clone())))
@@ -118,10 +124,9 @@ pub fn window_event(
 
 /// Converts a [`Mode`] to a [`winit`] fullscreen mode.
 ///
-/// [`Mode`]: ../enum.Mode.html
 /// [`winit`]: https://github.com/rust-windowing/winit
 pub fn fullscreen(
-    monitor: winit::monitor::MonitorHandle,
+    monitor: Option<winit::monitor::MonitorHandle>,
     mode: Mode,
 ) -> Option<winit::window::Fullscreen> {
     match mode {
@@ -174,10 +179,8 @@ pub fn mouse_button(mouse_button: winit::event::MouseButton) -> mouse::Button {
 ///
 /// [`winit`]: https://github.com/rust-windowing/winit
 /// [`iced_native`]: https://github.com/hecrj/iced/tree/master/native
-pub fn modifiers_state(
-    modifiers: winit::event::ModifiersState,
-) -> ModifiersState {
-    ModifiersState {
+pub fn modifiers(modifiers: winit::event::ModifiersState) -> Modifiers {
+    Modifiers {
         shift: modifiers.shift(),
         control: modifiers.ctrl(),
         alt: modifiers.alt(),
@@ -293,7 +296,8 @@ pub fn key_code(virtual_keycode: winit::event::VirtualKeyCode) -> KeyCode {
         winit::event::VirtualKeyCode::Numpad9 => KeyCode::Numpad9,
         winit::event::VirtualKeyCode::AbntC1 => KeyCode::AbntC1,
         winit::event::VirtualKeyCode::AbntC2 => KeyCode::AbntC2,
-        winit::event::VirtualKeyCode::Add => KeyCode::Add,
+        winit::event::VirtualKeyCode::NumpadAdd => KeyCode::NumpadAdd,
+        winit::event::VirtualKeyCode::Plus => KeyCode::Plus,
         winit::event::VirtualKeyCode::Apostrophe => KeyCode::Apostrophe,
         winit::event::VirtualKeyCode::Apps => KeyCode::Apps,
         winit::event::VirtualKeyCode::At => KeyCode::At,
@@ -304,8 +308,8 @@ pub fn key_code(virtual_keycode: winit::event::VirtualKeyCode) -> KeyCode {
         winit::event::VirtualKeyCode::Colon => KeyCode::Colon,
         winit::event::VirtualKeyCode::Comma => KeyCode::Comma,
         winit::event::VirtualKeyCode::Convert => KeyCode::Convert,
-        winit::event::VirtualKeyCode::Decimal => KeyCode::Decimal,
-        winit::event::VirtualKeyCode::Divide => KeyCode::Divide,
+        winit::event::VirtualKeyCode::NumpadDecimal => KeyCode::NumpadDecimal,
+        winit::event::VirtualKeyCode::NumpadDivide => KeyCode::NumpadDivide,
         winit::event::VirtualKeyCode::Equals => KeyCode::Equals,
         winit::event::VirtualKeyCode::Grave => KeyCode::Grave,
         winit::event::VirtualKeyCode::Kana => KeyCode::Kana,
@@ -319,7 +323,7 @@ pub fn key_code(virtual_keycode: winit::event::VirtualKeyCode) -> KeyCode {
         winit::event::VirtualKeyCode::MediaSelect => KeyCode::MediaSelect,
         winit::event::VirtualKeyCode::MediaStop => KeyCode::MediaStop,
         winit::event::VirtualKeyCode::Minus => KeyCode::Minus,
-        winit::event::VirtualKeyCode::Multiply => KeyCode::Multiply,
+        winit::event::VirtualKeyCode::NumpadMultiply => KeyCode::NumpadMultiply,
         winit::event::VirtualKeyCode::Mute => KeyCode::Mute,
         winit::event::VirtualKeyCode::MyComputer => KeyCode::MyComputer,
         winit::event::VirtualKeyCode::NavigateForward => {
@@ -347,7 +351,7 @@ pub fn key_code(virtual_keycode: winit::event::VirtualKeyCode) -> KeyCode {
         winit::event::VirtualKeyCode::Slash => KeyCode::Slash,
         winit::event::VirtualKeyCode::Sleep => KeyCode::Sleep,
         winit::event::VirtualKeyCode::Stop => KeyCode::Stop,
-        winit::event::VirtualKeyCode::Subtract => KeyCode::Subtract,
+        winit::event::VirtualKeyCode::NumpadSubtract => KeyCode::NumpadSubtract,
         winit::event::VirtualKeyCode::Sysrq => KeyCode::Sysrq,
         winit::event::VirtualKeyCode::Tab => KeyCode::Tab,
         winit::event::VirtualKeyCode::Underline => KeyCode::Underline,
@@ -366,6 +370,7 @@ pub fn key_code(virtual_keycode: winit::event::VirtualKeyCode) -> KeyCode {
         winit::event::VirtualKeyCode::Copy => KeyCode::Copy,
         winit::event::VirtualKeyCode::Paste => KeyCode::Paste,
         winit::event::VirtualKeyCode::Cut => KeyCode::Cut,
+        winit::event::VirtualKeyCode::Asterisk => KeyCode::Asterisk,
     }
 }
 

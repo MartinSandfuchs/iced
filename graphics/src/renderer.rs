@@ -13,25 +13,16 @@ pub struct Renderer<B: Backend> {
 
 impl<B: Backend> Renderer<B> {
     /// Creates a new [`Renderer`] from the given [`Backend`].
-    ///
-    /// [`Renderer`]: struct.Renderer.html
-    /// [`Backend`]: backend/trait.Backend.html
     pub fn new(backend: B) -> Self {
         Self { backend }
     }
 
     /// Returns a reference to the [`Backend`] of the [`Renderer`].
-    ///
-    /// [`Renderer`]: struct.Renderer.html
-    /// [`Backend`]: backend/trait.Backend.html
     pub fn backend(&self) -> &B {
         &self.backend
     }
 
     /// Returns a mutable reference to the [`Backend`] of the [`Renderer`].
-    ///
-    /// [`Renderer`]: struct.Renderer.html
-    /// [`Backend`]: backend/trait.Backend.html
     pub fn backend_mut(&mut self) -> &mut B {
         &mut self.backend
     }
@@ -96,10 +87,11 @@ where
         widget: &dyn Widget<Message, Self>,
         layout: Layout<'_>,
         cursor_position: Point,
+        viewport: &Rectangle,
         color: Color,
     ) -> Self::Output {
         let (primitive, cursor) =
-            widget.draw(self, defaults, layout, cursor_position);
+            widget.draw(self, defaults, layout, cursor_position, viewport);
 
         let mut primitives = Vec::new();
 
@@ -118,8 +110,8 @@ fn explain_layout(
     primitives.push(Primitive::Quad {
         bounds: layout.bounds(),
         background: Background::Color(Color::TRANSPARENT),
-        border_radius: 0,
-        border_width: 1,
+        border_radius: 0.0,
+        border_width: 1.0,
         border_color: [0.6, 0.6, 0.6, 0.5].into(),
     });
 

@@ -1,9 +1,6 @@
 //! Display an interactive selector of a single value from a range of values.
 //!
 //! A [`Slider`] has some local [`State`].
-//!
-//! [`Slider`]: struct.Slider.html
-//! [`State`]: struct.State.html
 use crate::{Backend, Primitive, Renderer};
 use iced_native::mouse;
 use iced_native::slider;
@@ -57,8 +54,8 @@ where
                     height: 2.0,
                 },
                 background: Background::Color(style.rail_colors.0),
-                border_radius: 0,
-                border_width: 0,
+                border_radius: 0.0,
+                border_width: 0.0,
                 border_color: Color::TRANSPARENT,
             },
             Primitive::Quad {
@@ -69,20 +66,18 @@ where
                     height: 2.0,
                 },
                 background: Background::Color(style.rail_colors.1),
-                border_radius: 0,
-                border_width: 0,
+                border_radius: 0.0,
+                border_width: 0.0,
                 border_color: Color::TRANSPARENT,
             },
         );
-
-        let (range_start, range_end) = range.into_inner();
 
         let (handle_width, handle_height, handle_border_radius) = match style
             .handle
             .shape
         {
             HandleShape::Circle { radius } => {
-                (f32::from(radius * 2), f32::from(radius * 2), radius)
+                (radius * 2.0, radius * 2.0, radius)
             }
             HandleShape::Rectangle {
                 width,
@@ -90,8 +85,14 @@ where
             } => (f32::from(width), f32::from(bounds.height), border_radius),
         };
 
-        let handle_offset = (bounds.width - handle_width)
-            * ((value - range_start) / (range_end - range_start).max(1.0));
+        let (range_start, range_end) = range.into_inner();
+
+        let handle_offset = if range_start >= range_end {
+            0.0
+        } else {
+            (bounds.width - handle_width) * (value - range_start)
+                / (range_end - range_start)
+        };
 
         let handle = Primitive::Quad {
             bounds: Rectangle {

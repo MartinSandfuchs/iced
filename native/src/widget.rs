@@ -18,8 +18,7 @@
 //! use iced_native::{button, Button, Widget};
 //! ```
 //!
-//! [`Widget`]: trait.Widget.html
-//! [renderer]: ../renderer/index.html
+//! [renderer]: crate::renderer
 pub mod button;
 pub mod checkbox;
 pub mod column;
@@ -30,6 +29,7 @@ pub mod pick_list;
 pub mod progress_bar;
 pub mod radio;
 pub mod row;
+pub mod rule;
 pub mod scrollable;
 pub mod slider;
 pub mod space;
@@ -59,6 +59,8 @@ pub use radio::Radio;
 #[doc(no_inline)]
 pub use row::Row;
 #[doc(no_inline)]
+pub use rule::Rule;
+#[doc(no_inline)]
 pub use scrollable::Scrollable;
 #[doc(no_inline)]
 pub use slider::Slider;
@@ -73,15 +75,15 @@ pub use text_input::TextInput;
 #[doc(no_inline)]
 pub use video::Video;
 
-use crate::{layout, overlay, Clipboard, Event, Hasher, Layout, Length, Point};
+use crate::event::{self, Event};
+use crate::layout;
+use crate::overlay;
+use crate::{Clipboard, Hasher, Layout, Length, Point, Rectangle};
 
 /// A component that displays information and allows interaction.
 ///
 /// If you want to build your own widgets, you will need to implement this
 /// trait.
-///
-/// [`Widget`]: trait.Widget.html
-/// [`Element`]: ../struct.Element.html
 ///
 /// # Examples
 /// The repository has some [examples] showcasing how to implement a custom
@@ -94,24 +96,20 @@ use crate::{layout, overlay, Clipboard, Event, Hasher, Layout, Length, Point};
 /// - [`geometry`], a custom widget showcasing how to draw geometry with the
 /// `Mesh2D` primitive in [`iced_wgpu`].
 ///
-/// [examples]: https://github.com/hecrj/iced/tree/0.1/examples
-/// [`bezier_tool`]: https://github.com/hecrj/iced/tree/0.1/examples/bezier_tool
-/// [`custom_widget`]: https://github.com/hecrj/iced/tree/0.1/examples/custom_widget
-/// [`geometry`]: https://github.com/hecrj/iced/tree/0.1/examples/geometry
+/// [examples]: https://github.com/hecrj/iced/tree/0.2/examples
+/// [`bezier_tool`]: https://github.com/hecrj/iced/tree/0.2/examples/bezier_tool
+/// [`custom_widget`]: https://github.com/hecrj/iced/tree/0.2/examples/custom_widget
+/// [`geometry`]: https://github.com/hecrj/iced/tree/0.2/examples/geometry
 /// [`lyon`]: https://github.com/nical/lyon
-/// [`iced_wgpu`]: https://github.com/hecrj/iced/tree/0.1/wgpu
+/// [`iced_wgpu`]: https://github.com/hecrj/iced/tree/0.2/wgpu
 pub trait Widget<Message, Renderer>
 where
     Renderer: crate::Renderer,
 {
     /// Returns the width of the [`Widget`].
-    ///
-    /// [`Widget`]: trait.Widget.html
     fn width(&self) -> Length;
 
     /// Returns the height of the [`Widget`].
-    ///
-    /// [`Widget`]: trait.Widget.html
     fn height(&self) -> Length;
 
     /// Returns the [`Node`] of the [`Widget`].
@@ -119,9 +117,7 @@ where
     /// This [`Node`] is used by the runtime to compute the [`Layout`] of the
     /// user interface.
     ///
-    /// [`Node`]: ../layout/struct.Node.html
-    /// [`Widget`]: trait.Widget.html
-    /// [`Layout`]: ../layout/struct.Layout.html
+    /// [`Node`]: layout::Node
     fn layout(
         &self,
         renderer: &Renderer,
@@ -129,14 +125,13 @@ where
     ) -> layout::Node;
 
     /// Draws the [`Widget`] using the associated `Renderer`.
-    ///
-    /// [`Widget`]: trait.Widget.html
     fn draw(
         &self,
         renderer: &mut Renderer,
         defaults: &Renderer::Defaults,
         layout: Layout<'_>,
         cursor_position: Point,
+        viewport: &Rectangle,
     ) -> Renderer::Output;
 
     /// Computes the _layout_ hash of the [`Widget`].
@@ -149,9 +144,7 @@ where
     /// For example, the [`Text`] widget does not hash its color property, as
     /// its value cannot affect the overall [`Layout`] of the user interface.
     ///
-    /// [`Widget`]: trait.Widget.html
-    /// [`Layout`]: ../layout/struct.Layout.html
-    /// [`Text`]: text/struct.Text.html
+    /// [`Text`]: crate::widget::Text
     fn hash_layout(&self, state: &mut Hasher);
 
     /// Processes a runtime [`Event`].
@@ -166,11 +159,6 @@ where
     ///   * a [`Clipboard`], if available
     ///
     /// By default, it does nothing.
-    ///
-    /// [`Event`]: ../enum.Event.html
-    /// [`Widget`]: trait.Widget.html
-    /// [`Layout`]: ../layout/struct.Layout.html
-    /// [`Clipboard`]: ../trait.Clipboard.html
     fn on_event(
         &mut self,
         _event: Event,
@@ -179,12 +167,11 @@ where
         _messages: &mut Vec<Message>,
         _renderer: &Renderer,
         _clipboard: Option<&dyn Clipboard>,
-    ) {
+    ) -> event::Status {
+        event::Status::Ignored
     }
 
-    /// Returns the overlay of the [`Element`], if there is any.
-    ///
-    /// [`Element`]: struct.Element.html
+    /// Returns the overlay of the [`Widget`], if there is any.
     fn overlay(
         &mut self,
         _layout: Layout<'_>,

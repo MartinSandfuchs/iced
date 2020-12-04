@@ -1,18 +1,16 @@
 //! Distribute content vertically.
 use std::hash::Hash;
 
+use crate::event::{self, Event};
+use crate::layout;
+use crate::overlay;
 use crate::{
-    layout, overlay, Align, Clipboard, Element, Event, Hasher, Layout, Length,
-    Point, Widget,
+    Align, Clipboard, Element, Hasher, Layout, Length, Point, Rectangle, Widget,
 };
 
 use std::u32;
 
 /// A container that distributes its contents vertically.
-///
-/// A [`Column`] will try to fill the horizontal space of its container.
-///
-/// [`Column`]: struct.Column.html
 #[allow(missing_debug_implementations)]
 pub struct Column<'a, Message, Renderer> {
     spacing: u16,
@@ -27,15 +25,11 @@ pub struct Column<'a, Message, Renderer> {
 
 impl<'a, Message, Renderer> Column<'a, Message, Renderer> {
     /// Creates an empty [`Column`].
-    ///
-    /// [`Column`]: struct.Column.html
     pub fn new() -> Self {
         Self::with_children(Vec::new())
     }
 
     /// Creates a [`Column`] with the given elements.
-    ///
-    /// [`Column`]: struct.Column.html
     pub fn with_children(
         children: Vec<Element<'a, Message, Renderer>>,
     ) -> Self {
@@ -62,56 +56,42 @@ impl<'a, Message, Renderer> Column<'a, Message, Renderer> {
     }
 
     /// Sets the padding of the [`Column`].
-    ///
-    /// [`Column`]: struct.Column.html
     pub fn padding(mut self, units: u16) -> Self {
         self.padding = units;
         self
     }
 
     /// Sets the width of the [`Column`].
-    ///
-    /// [`Column`]: struct.Column.html
     pub fn width(mut self, width: Length) -> Self {
         self.width = width;
         self
     }
 
     /// Sets the height of the [`Column`].
-    ///
-    /// [`Column`]: struct.Column.html
     pub fn height(mut self, height: Length) -> Self {
         self.height = height;
         self
     }
 
     /// Sets the maximum width of the [`Column`].
-    ///
-    /// [`Column`]: struct.Column.html
     pub fn max_width(mut self, max_width: u32) -> Self {
         self.max_width = max_width;
         self
     }
 
     /// Sets the maximum height of the [`Column`] in pixels.
-    ///
-    /// [`Column`]: struct.Column.html
     pub fn max_height(mut self, max_height: u32) -> Self {
         self.max_height = max_height;
         self
     }
 
     /// Sets the horizontal alignment of the contents of the [`Column`] .
-    ///
-    /// [`Column`]: struct.Column.html
     pub fn align_items(mut self, align: Align) -> Self {
         self.align_items = align;
         self
     }
 
     /// Adds an element to the [`Column`].
-    ///
-    /// [`Column`]: struct.Column.html
     pub fn push<E>(mut self, child: E) -> Self
     where
         E: Into<Element<'a, Message, Renderer>>,
@@ -164,9 +144,11 @@ where
         messages: &mut Vec<Message>,
         renderer: &Renderer,
         clipboard: Option<&dyn Clipboard>,
-    ) {
-        self.children.iter_mut().zip(layout.children()).for_each(
-            |(child, layout)| {
+    ) -> event::Status {
+        self.children
+            .iter_mut()
+            .zip(layout.children())
+            .map(|(child, layout)| {
                 child.widget.on_event(
                     event.clone(),
                     layout,
@@ -175,8 +157,8 @@ where
                     renderer,
                     clipboard,
                 )
-            },
-        );
+            })
+            .fold(event::Status::Ignored, event::Status::merge)
     }
 
     fn draw(
@@ -185,8 +167,15 @@ where
         defaults: &Renderer::Defaults,
         layout: Layout<'_>,
         cursor_position: Point,
+        viewport: &Rectangle,
     ) -> Renderer::Output {
-        renderer.draw(defaults, &self.children, layout, cursor_position)
+        renderer.draw(
+            defaults,
+            &self.children,
+            layout,
+            cursor_position,
+            viewport,
+        )
     }
 
     fn hash_layout(&self, state: &mut Hasher) {
@@ -199,6 +188,7 @@ where
         self.max_height.hash(state);
         self.align_items.hash(state);
         self.spacing.hash(state);
+        self.padding.hash(state);
 
         for child in &self.children {
             child.widget.hash_layout(state);
@@ -222,8 +212,7 @@ where
 /// Your [renderer] will need to implement this trait before being
 /// able to use a [`Column`] in your user interface.
 ///
-/// [`Column`]: struct.Column.html
-/// [renderer]: ../../renderer/index.html
+/// [renderer]: crate::renderer
 pub trait Renderer: crate::Renderer + Sized {
     /// Draws a [`Column`].
     ///
@@ -231,15 +220,13 @@ pub trait Renderer: crate::Renderer + Sized {
     /// - the children of the [`Column`]
     /// - the [`Layout`] of the [`Column`] and its children
     /// - the cursor position
-    ///
-    /// [`Column`]: struct.Column.html
-    /// [`Layout`]: ../layout/struct.Layout.html
     fn draw<Message>(
         &mut self,
         defaults: &Self::Defaults,
         content: &[Element<'_, Message, Self>],
         layout: Layout<'_>,
         cursor_position: Point,
+        viewport: &Rectangle,
     ) -> Self::Output;
 }
 
